@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unicorn Tower Crawler: Mythical Edition</title>
+    <style>
+        body {
+            font-family: monospace;
+            background-color: #000;
+            color: #0f0;
+            padding: 20px;
+        }
+        #game-container {
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #0f0;
+            padding: 20px;
+        }
+        #asciiArt {
+            white-space: pre;
+            font-size: 12px;
+            line-height: 12px;
+        }
+        .stats, .inventory, .skills, .quests {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .stat, .item, .skill, .quest {
+            flex-basis: 48%;
+            margin-bottom: 10px;
+        }
+        #gameLog {
+            height: 150px;
+            overflow-y: scroll;
+            border: 1px solid #0f0;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        button {
+            background-color: #000;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0f0;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>Unicorn Tower Crawler: Mythical Edition</h1>
+        
+        <div id="asciiArt">
+\_\_\_\_\_\_\_\\)%%%%%%%%.\_ \`\'\'\'\'-\'-; % % % % %\'-.\_ :U) \\ \'-.
+: W\_\_)\' .\' .\' :.::/ \'.\' .\' o_U/ : ; : .\' \'\'\`
+        </div>
+        
+        <div class="stats" id="stats"></div>
+        
+        <div id="gameLog"></div>
+        
+        <div class="inventory" id="inventory"></div>
+        
+        <div class="skills" id="skills"></div>
+        
+        <div class="quests" id="quests"></div>
+        
+        <div class="actions" id="actions"></div>
+    </div>
+
+    <script>
+        const game = {
+            stats: {
+                insight: 0,
+                vitality: 100,
+                maxVitality: 100,
+                strength: 10,
+                agility: 8,
+                magic: 5,
+                bloodEchoes: 0
+            },
+            inventory: [
+                { name: "Health Potion", quantity: 2 },
+                { name: "Moonblade", quantity: 1 },
+                { name: "Stardust Shield", quantity: 1 }
+            ],
+            skills: [
+                { name: "Rainbow Dash", cost: 3, description: "Dodge the next attack" },
+                { name: "Horn of Harmony", cost: 5, description: "Charm an enemy" }
+            ],
+            quests: [
+                { name: "Rescue the Fairy Queen", progress: 2, total: 5 },
+                { name: "Collect Stardust Shards", progress: 3, total: 7 }
+            ],
+            currentFloor: 1,
+            floorType: "Crystal Cavern"
+        };
+
+        function updateUI() {
+            document.getElementById('stats').innerHTML = Object.entries(game.stats)
+                .map(([key, value]) => `<div class="stat"><strong>${key}:</strong> ${value}</div>`)
+                .join('');
+
+            document.getElementById('inventory').innerHTML = game.inventory
+                .map(item => `<div class="item">${item.name} (x${item.quantity})</div>`)
+                .join('');
+
+            document.getElementById('skills').innerHTML = game.skills
+                .map(skill => `<div class="skill">${skill.name} (${skill.cost} Insight): ${skill.description}</div>`)
+                .join('');
+
+            document.getElementById('quests').innerHTML = game.quests
+                .map(quest => `<div class="quest">${quest.name} (${quest.progress}/${quest.total})</div>`)
+                .join('');
+
+            document.getElementById('actions').innerHTML = `
+                <button onclick="hunt()">Hunt</button>
+                <button onclick="commune()">Commune (1 Insight)</button>
+                <button onclick="meditate()">Meditate</button>
+                <button onclick="useItem()">Use Item</button>
+                <button onclick="useSkill()">Use Skill</button>
+                <button onclick="mineCrystals()">Mine Crystals</button>
+                <button onclick="ascend()">Ascend (10,000 Blood Echoes)</button>
+            `;
+        }
+
+        function log(message) {
+            const gameLog = document.getElementById('gameLog');
+            gameLog.innerHTML += `<p>${message}</p>`;
+            gameLog.scrollTop = gameLog.scrollHeight;
+        }
+
+        function hunt() {
+            const enemyNames = ["Shadow Wraith", "Crystal Golem", "Mist Sprite", "Echoing Void"];
+            const enemy = enemyNames[Math.floor(Math.random() * enemyNames.length)];
+            const damage = Math.floor(Math.random() * 10) + 1;
+            game.stats.vitality = Math.max(0, game.stats.vitality - damage);
+            const bloodEchoes = Math.floor(Math.random() * 50) + 10;
+            game.stats.bloodEchoes += bloodEchoes;
+            log(`You encountered a ${enemy}! You took ${damage} damage and gained ${bloodEchoes} Blood Echoes.`);
+            updateUI();
+        }
+
+        function commune() {
+            if (game.stats.insight >= 1) {
+                game.stats.insight--;
+                const insights = [
+                    "You sense a powerful enemy three floors above.",
+                    "A hidden passage on this floor leads to rare treasure.",
+                    "The next floor has healing springs.",
+                    "Beware the moon phase, it affects the tower's denizens."
+                ];
+                log(insights[Math.floor(Math.random() * insights.length)]);
+            } else {
+                log("You don't have enough Insight to commune.");
+            }
+            updateUI();
+        }
+
+        function meditate() {
+            const healing = 10;
+            game.stats.vitality = Math.min(game.stats.maxVitality, game.stats.vitality + healing);
+            log(`You meditate and restore ${healing} Vitality.`);
+            updateUI();
+        }
+
+        function useItem() {
+            if (game.inventory.some(item => item.name === "Health Potion" && item.quantity > 0)) {
+                game.inventory.find(item => item.name === "Health Potion").quantity--;
+                game.stats.vitality = Math.min(game.stats.maxVitality, game.stats.vitality + 50);
+                log("You used a Health Potion and restored 50 Vitality.");
+            } else {
+                log("You don't have any Health Potions to use.");
+            }
+            updateUI();
+        }
+
+        function useSkill() {
+            log("You attempt to use a skill, but the unicorn is still learning how to harness its magical abilities.");
+            updateUI();
+        }
+
+        function mineCrystals() {
+            const crystals = Math.floor(Math.random() * 3) + 1;
+            game.stats.insight += crystals;
+            log(`You mined ${crystals} magical crystal${crystals > 1 ? 's' : ''}, gaining ${crystals} Insight.`);
+            updateUI();
+        }
+
+        function ascend() {
+            if (game.stats.bloodEchoes >= 10000) {
+                game.stats.bloodEchoes -= 10000;
+                game.currentFloor++;
+                game.floorType = ["Misty Peaks", "Starlight Chamber", "Void Realm"][Math.floor(Math.random() * 3)];
+                log(`You ascended to floor ${game.currentFloor}: ${game.floorType}!`);
+            } else {
+                log("You need 10,000 Blood Echoes to ascend to the next floor.");
+            }
+            updateUI();
+        }
+
+        // Initialize the game
+        log("Welcome, brave unicorn, to the Tower of Nightmares. Your mythical journey begins...");
+        log(`Current Floor: ${game.floorType}`);
+        log("The walls shimmer with magical crystals. You sense hidden power...");
+        updateUI();
+    </script>
+</body>
+</html>
