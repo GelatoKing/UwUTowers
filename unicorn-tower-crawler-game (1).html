@@ -6,215 +6,385 @@
     <title>Unicorn Tower Crawler: Mythical Edition</title>
     <style>
         body {
-            font-family: monospace;
-            background-color: #000;
-            color: #0f0;
-            padding: 20px;
-        }
-        #game-container {
-            max-width: 800px;
-            margin: 0 auto;
-            border: 1px solid #0f0;
-            padding: 20px;
-        }
-        #asciiArt {
-            white-space: pre;
-            font-size: 12px;
-            line-height: 12px;
-        }
-        .stats, .inventory, .skills, .quests {
+            font-family: 'Fantasy', sans-serif;
+            background-color: #330033;
+            color: #f0f0ff;
             display: flex;
-            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .game-container {
+            background-color: #4a0066;
+            border: 2px solid #ff33ff;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(255,105,180,0.5);
+            padding: 20px;
+            width: 80%;
+            max-width: 600px;
+        }
+        h1 {
+            color: #ff66ff;
+            text-align: center;
+            font-family: 'Fantasy', sans-serif;
+            text-shadow: 3px 3px 6px rgba(255,20,147,0.6);
+        }
+        .stats {
+            display: flex;
             justify-content: space-between;
             margin-bottom: 20px;
         }
-        .stat, .item, .skill, .quest {
-            flex-basis: 48%;
-            margin-bottom: 10px;
+        .stat {
+            background-color: #660066;
+            border: 1px solid #ff33ff;
+            border-radius: 5px;
+            padding: 10px;
+            flex-grow: 1;
+            margin: 0 5px;
+            text-align: center;
+            color: #ff99ff;
         }
-        #gameLog {
-            height: 150px;
+        .game-log {
+            background-color: #440066;
+            border: 1px solid #ff66ff;
+            border-radius: 5px;
+            height: 200px;
             overflow-y: scroll;
-            border: 1px solid #0f0;
             padding: 10px;
             margin-bottom: 20px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            color: #ffccff;
         }
         .actions {
             display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
+            justify-content: space-between;
         }
         button {
-            background-color: #000;
-            color: #0f0;
-            border: 1px solid #0f0;
-            padding: 5px 10px;
+            background-color: #ff66cc;
+            border: 1px solid #ff33cc;
+            border-radius: 5px;
+            color: #fff;
             cursor: pointer;
+            font-size: 16px;
+            padding: 10px 20px;
+            transition: background-color 0.3s;
+            box-shadow: 0 0 10px rgba(255,105,180,0.8);
         }
         button:hover {
-            background-color: #0f0;
-            color: #000;
+            background-color: #ff33cc;
+        }
+        button:disabled {
+            background-color: #550055;
+            border-color: #ff99cc;
+            cursor: not-allowed;
+        }
+        #bootScreen, #deathScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #330033;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        #asciiArt {
+            font-family: monospace;
+            white-space: pre;
+            color: #ff66ff;
+            margin-bottom: 20px;
+        }
+        #loadingBar {
+            width: 300px;
+            height: 20px;
+            background-color: #660066;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        #loadingProgress {
+            width: 0%;
+            height: 100%;
+            background-color: #ff66ff;
+            transition: width 0.5s;
+        }
+        #madeBy {
+            font-size: 12px;
+            color: #ff99ff;
+            opacity: 0.7;
+        }
+        .unicorn-avatar {
+            font-size: 40px;
+            margin-right: 10px;
+        }
+        #avatarContainer {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        #youDied {
+            font-size: 72px;
+            font-weight: bold;
+            color: #ff0000;
+            text-shadow: 0 0 10px #ff0000;
         }
     </style>
 </head>
 <body>
-    <div id="game-container">
-        <h1>Unicorn Tower Crawler: Mythical Edition</h1>
-        
+    <div id="bootScreen">
         <div id="asciiArt">
-\_\_\_\_\_\_\_\\)%%%%%%%%.\_ \`\'\'\'\'-\'-; % % % % %\'-.\_ :U) \\ \'-.
-: W\_\_)\' .\' .\' :.::/ \'.\' .\' o_U/ : ; : .\' \'\'\`
+ _______\)%%%%%%%%._              
+`''''-'-;   % % % % %'-._         
+        :U) \            '-.      
+        : W__)'    .'    .'       
+        :.::/  '.'   .'           
+        o_U/   :    ;             
+               :   .'             
+                ''`
         </div>
-        
-        <div class="stats" id="stats"></div>
-        
-        <div id="gameLog"></div>
-        
-        <div class="inventory" id="inventory"></div>
-        
-        <div class="skills" id="skills"></div>
-        
-        <div class="quests" id="quests"></div>
-        
-        <div class="actions" id="actions"></div>
+        <div id="loadingBar">
+            <div id="loadingProgress"></div>
+        </div>
+        <div id="madeBy">MADE BY UWUPUNKS</div>
+    </div>
+    <div id="deathScreen" style="display: none;">
+        <div id="asciiArt">
+ _______\)%%%%%%%%._              
+`''''-'-;   % % % % %'-._         
+        :U) \            '-.      
+        : W__)'    .'    .'       
+        :.::/  '.'   .'           
+        o_U/   :    ;             
+               :   .'             
+                ''`
+        </div>
+        <div id="youDied">YOU DIED</div>
+    </div>
+    <div class="game-container">
+        <h1>Unicorn Tower Crawler: Mythical Edition</h1>
+        <div id="avatarContainer"></div>
+        <div class="stats">
+            <div class="stat">
+                <h3>Insight</h3>
+                <p id="level">0</p>
+            </div>
+            <div class="stat">
+                <h3>Vitality</h3>
+                <p id="health">100/100</p>
+            </div>
+            <div class="stat">
+                <h3>Strength</h3>
+                <p id="attack">10</p>
+            </div>
+            <div class="stat">
+                <h3>Blood Echoes</h3>
+                <p id="bloodechoes">0</p>
+            </div>
+        </div>
+        <div class="game-log" id="gameLog">
+            Welcome, brave unicorn, to the Tower of Nightmares. Your mythical journey begins...
+        </div>
+        <div class="actions">
+            <button id="huntButton">Hunt</button>
+            <button id="communeButton">Commune (1 Insight)</button>
+            <button id="ascendButton">Ascend (10,000 Blood Echoes)</button>
+        </div>
     </div>
 
     <script>
-        const game = {
-            stats: {
-                insight: 0,
-                vitality: 100,
-                maxVitality: 100,
-                strength: 10,
-                agility: 8,
-                magic: 5,
-                bloodEchoes: 0
-            },
-            inventory: [
-                { name: "Health Potion", quantity: 2 },
-                { name: "Moonblade", quantity: 1 },
-                { name: "Stardust Shield", quantity: 1 }
-            ],
-            skills: [
-                { name: "Rainbow Dash", cost: 3, description: "Dodge the next attack" },
-                { name: "Horn of Harmony", cost: 5, description: "Charm an enemy" }
-            ],
-            quests: [
-                { name: "Rescue the Fairy Queen", progress: 2, total: 5 },
-                { name: "Collect Stardust Shards", progress: 3, total: 7 }
-            ],
-            currentFloor: 1,
-            floorType: "Crystal Cavern"
+        const gameLog = document.getElementById('gameLog');
+        const huntButton = document.getElementById('huntButton');
+        const communeButton = document.getElementById('communeButton');
+        const ascendButton = document.getElementById('ascendButton');
+        const bootScreen = document.getElementById('bootScreen');
+        const deathScreen = document.getElementById('deathScreen');
+        const loadingProgress = document.getElementById('loadingProgress');
+        const avatarContainer = document.getElementById('avatarContainer');
+
+        let unicorn = {
+            name: "Nightmare",
+            maxVitality: 100,
+            vitality: 100,
+            strength: 10,
+            bloodEchoes: 0
         };
 
-        function updateUI() {
-            document.getElementById('stats').innerHTML = Object.entries(game.stats)
-                .map(([key, value]) => `<div class="stat"><strong>${key}:</strong> ${value}</div>`)
-                .join('');
+        let insight = 0;
+        let ascensions = 0;
+        let difficultyMultiplier = 1;
 
-            document.getElementById('inventory').innerHTML = game.inventory
-                .map(item => `<div class="item">${item.name} (x${item.quantity})</div>`)
-                .join('');
+        const unicornAvatars = [
+            '🦄', '🎠', '🌈', '🔮', '⭐'
+        ];
 
-            document.getElementById('skills').innerHTML = game.skills
-                .map(skill => `<div class="skill">${skill.name} (${skill.cost} Insight): ${skill.description}</div>`)
-                .join('');
+        let currentAvatar;
 
-            document.getElementById('quests').innerHTML = game.quests
-                .map(quest => `<div class="quest">${quest.name} (${quest.progress}/${quest.total})</div>`)
-                .join('');
-
-            document.getElementById('actions').innerHTML = `
-                <button onclick="hunt()">Hunt</button>
-                <button onclick="commune()">Commune (1 Insight)</button>
-                <button onclick="meditate()">Meditate</button>
-                <button onclick="useItem()">Use Item</button>
-                <button onclick="useSkill()">Use Skill</button>
-                <button onclick="mineCrystals()">Mine Crystals</button>
-                <button onclick="ascend()">Ascend (10,000 Blood Echoes)</button>
-            `;
+        function updateStats() {
+            document.getElementById('level').textContent = insight;
+            document.getElementById('health').textContent = `${unicorn.vitality}/${unicorn.maxVitality}`;
+            document.getElementById('attack').textContent = unicorn.strength;
+            document.getElementById('bloodechoes').textContent = unicorn.bloodEchoes;
+            ascendButton.disabled = unicorn.bloodEchoes < 10000;
         }
 
-        function log(message) {
-            const gameLog = document.getElementById('gameLog');
-            gameLog.innerHTML += `<p>${message}</p>`;
+        function appendToLog(message) {
+            gameLog.textContent += '\n' + message;
             gameLog.scrollTop = gameLog.scrollHeight;
         }
 
+        function generateAbomination() {
+            const names = ["Writhing Horror", "Eyeless Stalker", "Bloodstained Beast", "Nameless Aberration", "Cosmic Devourer"];
+            const name = names[Math.floor(Math.random() * names.length)];
+            const vitality = Math.floor((50 + (insight * 15)) * difficultyMultiplier);
+            const strength = Math.floor((5 + (insight * 3)) * difficultyMultiplier);
+            return { name, vitality, strength };
+        }
+
         function hunt() {
-            const enemyNames = ["Shadow Wraith", "Crystal Golem", "Mist Sprite", "Echoing Void"];
-            const enemy = enemyNames[Math.floor(Math.random() * enemyNames.length)];
-            const damage = Math.floor(Math.random() * 10) + 1;
-            game.stats.vitality = Math.max(0, game.stats.vitality - damage);
-            const bloodEchoes = Math.floor(Math.random() * 50) + 10;
-            game.stats.bloodEchoes += bloodEchoes;
-            log(`You encountered a ${enemy}! You took ${damage} damage and gained ${bloodEchoes} Blood Echoes.`);
-            updateUI();
+            const abomination = generateAbomination();
+            appendToLog(`${currentAvatar} encounters a ${abomination.name} in the twisted corridors!`);
+
+            while (unicorn.vitality > 0 && abomination.vitality > 0) {
+                // Unicorn's turn
+                const unicornDamage = Math.floor(Math.random() * unicorn.strength) + 1;
+                abomination.vitality -= unicornDamage;
+                appendToLog(`${currentAvatar} strikes the ${abomination.name} for ${unicornDamage} damage`);
+
+                if (abomination.vitality <= 0) {
+                    const echoesGained = Math.floor(((insight + 1) * 20) * difficultyMultiplier);
+                    unicorn.bloodEchoes += echoesGained;
+                    appendToLog(`The ${abomination.name} is vanquished! You gain ${echoesGained} Blood Echoes.`);
+                    insight++;
+                    // Increase unicorn's strength and max vitality as they gain insight
+                    unicorn.strength += 1;
+                    unicorn.maxVitality += 10;
+                    appendToLog(`Your mystical knowledge grows... Insight: ${insight}, Strength +1, Max Vitality +10`);
+                    updateStats();
+                    return true;
+                }
+
+                // Abomination's turn
+                const abominationDamage = Math.floor(Math.random() * abomination.strength) + 1;
+                unicorn.vitality -= abominationDamage;
+                appendToLog(`The ${abomination.name} lashes out, dealing ${abominationDamage} damage`);
+
+                if (unicorn.vitality <= 0) {
+                    appendToLog(`${currentAvatar} has fallen to the ${abomination.name}. The nightmare consumes you.`);
+                    showDeathScreen();
+                    return false;
+                }
+            }
         }
 
         function commune() {
-            if (game.stats.insight >= 1) {
-                game.stats.insight--;
-                const insights = [
-                    "You sense a powerful enemy three floors above.",
-                    "A hidden passage on this floor leads to rare treasure.",
-                    "The next floor has healing springs.",
-                    "Beware the moon phase, it affects the tower's denizens."
-                ];
-                log(insights[Math.floor(Math.random() * insights.length)]);
+            if (insight >= 1) {
+                insight -= 1;
+                const healAmount = Math.floor(unicorn.maxVitality * 0.4); // Heal 40% of max vitality
+                unicorn.vitality = Math.min(unicorn.vitality + healAmount, unicorn.maxVitality);
+                appendToLog(`You commune with mystical forces, sacrificing 1 Insight to restore ${healAmount} Vitality.`);
+                updateStats();
             } else {
-                log("You don't have enough Insight to commune.");
+                appendToLog('Your mind lacks the cosmic understanding required to commune.');
             }
-            updateUI();
-        }
-
-        function meditate() {
-            const healing = 10;
-            game.stats.vitality = Math.min(game.stats.maxVitality, game.stats.vitality + healing);
-            log(`You meditate and restore ${healing} Vitality.`);
-            updateUI();
-        }
-
-        function useItem() {
-            if (game.inventory.some(item => item.name === "Health Potion" && item.quantity > 0)) {
-                game.inventory.find(item => item.name === "Health Potion").quantity--;
-                game.stats.vitality = Math.min(game.stats.maxVitality, game.stats.vitality + 50);
-                log("You used a Health Potion and restored 50 Vitality.");
-            } else {
-                log("You don't have any Health Potions to use.");
-            }
-            updateUI();
-        }
-
-        function useSkill() {
-            log("You attempt to use a skill, but the unicorn is still learning how to harness its magical abilities.");
-            updateUI();
-        }
-
-        function mineCrystals() {
-            const crystals = Math.floor(Math.random() * 3) + 1;
-            game.stats.insight += crystals;
-            log(`You mined ${crystals} magical crystal${crystals > 1 ? 's' : ''}, gaining ${crystals} Insight.`);
-            updateUI();
         }
 
         function ascend() {
-            if (game.stats.bloodEchoes >= 10000) {
-                game.stats.bloodEchoes -= 10000;
-                game.currentFloor++;
-                game.floorType = ["Misty Peaks", "Starlight Chamber", "Void Realm"][Math.floor(Math.random() * 3)];
-                log(`You ascended to floor ${game.currentFloor}: ${game.floorType}!`);
+            if (unicorn.bloodEchoes >= 10000) {
+                unicorn.bloodEchoes -= 10000;
+                ascensions++;
+                difficultyMultiplier += 0.2;
+                appendToLog(`You ascend to a higher level of the Tower. The air grows thicker with cosmic energy.`);
+                appendToLog(`Difficulty increased. Monsters are now ${(difficultyMultiplier * 100).toFixed(0)}% stronger.`);
+                updateStats();
+
+                if (ascensions >= 10) {
+                    endGame();
+                }
             } else {
-                log("You need 10,000 Blood Echoes to ascend to the next floor.");
+                appendToLog('You lack the Blood Echoes required to ascend.');
             }
-            updateUI();
         }
 
-        // Initialize the game
-        log("Welcome, brave unicorn, to the Tower of Nightmares. Your mythical journey begins...");
-        log(`Current Floor: ${game.floorType}`);
-        log("The walls shimmer with magical crystals. You sense hidden power...");
-        updateUI();
+        function endGame() {
+            bootScreen.style.display = 'flex';
+            document.getElementById('madeBy').style.display = 'none';
+            document.getElementById('loadingBar').style.display = 'none';
+            document.getElementById('asciiArt').innerHTML = `
+ _______\)%%%%%%%%._              
+\`''''-'-;   % % % % %'-._         
+        :U) \\            '-.      
+        : W__)'    .'    .'       
+        :.::/  '.'   .'           
+        o_U/   :    ;             
+               :   .'             
+                ''
+            `;
+            appendToLog("After your 10th ascension something strange happens to you.. you morph into one of the same monsters you have been fighting brandishing one eye and foaming at the mouth hoping the next dungeon crawler runs across you..YOU WERE CONSUMED BY ASCENSION");
+            huntButton.disabled = true;
+            communeButton.disabled = true;
+            ascendButton.disabled = true;
+        }
+
+        function showDeathScreen() {
+            deathScreen.style.display = 'flex';
+            setTimeout(() => {
+                deathScreen.style.display = 'none';
+                resetGame();
+            }, 3000);
+        }
+
+        function resetGame() {
+            unicorn = {
+                name: "Nightmare",
+                maxVitality: 100,
+                vitality: 100,
+                strength: 10,
+                bloodEchoes: 0
+            };
+            insight = 0;
+            ascensions = 0;
+            difficultyMultiplier = 1;
+            updateStats();
+            selectRandomAvatar();
+            appendToLog("A new unicorn emerges from the cosmic mists, ready to challenge the Tower of Nightmares...");
+        }
+
+        function selectRandomAvatar() {
+            currentAvatar = unicornAvatars[Math.floor(Math.random() * unicornAvatars.length)];
+            avatarContainer.innerHTML = `<span class="unicorn-avatar">${currentAvatar}</span>`;
+        }
+
+        huntButton.addEventListener('click', () => {
+            hunt();
+        });
+
+        communeButton.addEventListener('click', commune);
+        ascendButton.addEventListener('click', ascend);
+
+        function simulateLoading() {
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 1;
+                loadingProgress.style.width = `${progress}%`;
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        bootScreen.style.display = 'none';
+                    }, 500);
+                }
+            }, 50);
+        }
+
+        window.onload = () => {
+            simulateLoading();
+            selectRandomAvatar();
+            updateStats();
+        };
     </script>
 </body>
 </html>
