@@ -14,6 +14,7 @@
             align-items: center;
             height: 100vh;
             margin: 0;
+            padding-right: 100px;
         }
         .game-container {
             background-color: #4a0066;
@@ -133,6 +134,107 @@
             color: #ff0000;
             text-shadow: 0 0 10px #ff0000;
         }
+        .tower-container {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 70vh;
+            background-color: rgba(74, 0, 102, 0.3);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column-reverse;
+            overflow-y: auto;
+            overflow-x: hidden;
+            border: 2px solid #ff33ff;
+            z-index: 100;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .tower-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tower-segment {
+            width: 100%;
+            height: 15px;
+            background: linear-gradient(45deg, #4a0066, #660066);
+            border-top: 1px solid #ff66ff;
+            position: relative;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .tower-segment.boss {
+            background: linear-gradient(45deg, #660000, #990000);
+            border-top: 1px solid #ff3333;
+        }
+
+        .tower-segment.current {
+            background: linear-gradient(45deg, #ff33ff, #ff66ff);
+            box-shadow: 0 0 10px #ff33ff;
+        }
+
+        .tower-segment:hover::after {
+            content: attr(data-info);
+            position: absolute;
+            right: 45px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(74, 0, 102, 0.95);
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: 1px solid #ff33ff;
+            color: #ff99ff;
+            white-space: nowrap;
+            z-index: 1000;
+            font-size: 12px;
+            box-shadow: 0 0 10px rgba(255, 51, 255, 0.3);
+        }
+
+        .tower-marker {
+            position: absolute;
+            right: -20px;
+            font-size: 10px;
+            color: #ff99ff;
+            background-color: rgba(74, 0, 102, 0.8);
+            padding: 2px 4px;
+            border-radius: 3px;
+            transform: translateY(-50%);
+            top: 50%;
+        }
+
+        .tower-container::before,
+        .tower-container::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 20px;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .tower-container::before {
+            top: 0;
+            background: linear-gradient(to bottom, #330033, transparent);
+        }
+
+        .tower-container::after {
+            bottom: 0;
+            background: linear-gradient(to top, #330033, transparent);
+        }
+
+        @keyframes terrorPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .terror-mode {
+            animation: terrorPulse 2s infinite;
+        }
     </style>
 </head>
 <body>
@@ -165,6 +267,7 @@
         </div>
         <div id="youDied">YOU DIED</div>
     </div>
+    <div class="tower-container" id="towerVisual"></div>
     <div class="game-container">
         <h1>Unicorn Tower Crawler: Mythical Edition</h1>
         <div id="avatarContainer"></div>
@@ -205,6 +308,7 @@
         const deathScreen = document.getElementById('deathScreen');
         const loadingProgress = document.getElementById('loadingProgress');
         const avatarContainer = document.getElementById('avatarContainer');
+        const towerContainer = document.getElementById('towerVisual');
 
         let unicorn = {
             name: "Nightmare",
@@ -217,12 +321,20 @@
         let insight = 0;
         let ascensions = 0;
         let difficultyMultiplier = 1;
+        let lastBossFight = 0;
+        let bossIntensity = 1;
 
         const unicornAvatars = [
             '🦄', '🎠', '🌈', '🔮', '⭐'
         ];
 
         let currentAvatar;
+
+        let towerHeight = 0;
+        let towerSegments = [];
+
+        let lastBossEncounter = 0;
+        let bossDefeated = false;
 
         function updateStats() {
             document.getElementById('level').textContent = insight;
@@ -245,38 +357,161 @@
             return { name, vitality, strength };
         }
 
+        function generateBoss() {
+            const ascensionBonus = ascensions * 0.5; // 50% stronger per ascension
+            return {
+                name: "The One Eyed Terror",
+                vitality: Math.floor(300 * difficultyMultiplier * (1 + ascensionBonus)),
+                strength: Math.floor(25 * difficultyMultiplier * (1 + ascensionBonus)),
+                rage: 1.0,
+                turnCount: 0,
+                ascensionLevel: ascensions
+            };
+        }
+
         function hunt() {
-            const abomination = generateAbomination();
-            appendToLog(`${currentAvatar} encounters a ${abomination.name} in the twisted corridors!`);
+            console.log(`Current conditions - Insight: ${insight}, Ascensions: ${ascensions}, Last Boss: ${lastBossEncounter}`);
+            
+            // Higher spawn chance for first ascension
+            const baseChance = 0.15; // Base 15% chance
+            const firstAscensionBonus = (ascensions === 1) ? 0.15 : 0; // Additional 15% on first ascension
+            const bossChance = Math.random() < (baseChance + firstAscensionBonus);
+            
+            const canSpawnBoss = insight >= 20 && 
+                                ascensions > 0 && 
+                                bossChance && 
+                                (insight - lastBossEncounter > 5 || lastBossEncounter === 0) && 
+                                !bossDefeated;
 
-            while (unicorn.vitality > 0 && abomination.vitality > 0) {
-                // Unicorn's turn
-                const unicornDamage = Math.floor(Math.random() * unicorn.strength) + 1;
-                abomination.vitality -= unicornDamage;
-                appendToLog(`${currentAvatar} strikes the ${abomination.name} for ${unicornDamage} damage`);
+            console.log(`Boss Check - Chance: ${bossChance}, Can Spawn: ${canSpawnBoss}`);
 
-                if (abomination.vitality <= 0) {
-                    const echoesGained = Math.floor(((insight + 1) * 20) * difficultyMultiplier);
-                    unicorn.bloodEchoes += echoesGained;
-                    appendToLog(`The ${abomination.name} is vanquished! You gain ${echoesGained} Blood Echoes.`);
-                    insight++;
-                    // Increase unicorn's strength and max vitality as they gain insight
-                    unicorn.strength += 1;
-                    unicorn.maxVitality += 10;
-                    appendToLog(`Your mystical knowledge grows... Insight: ${insight}, Strength +1, Max Vitality +10`);
-                    updateStats();
-                    return true;
+            if (canSpawnBoss) {
+                const boss = generateBoss();
+                const originalBackground = document.body.style.backgroundColor;
+                const originalGameLogColor = gameLog.style.backgroundColor;
+                
+                // More dramatic color transition for first ascension
+                if (ascensions === 1) {
+                    appendToLog(`\n💀 THE ONE EYED TERROR HUNGERS FOR YOUR FIRST ASCENSION 💀`);
+                    document.body.style.backgroundColor = '#3d0000';
+                    document.body.style.transition = 'background-color 2s';
+                    gameLog.style.backgroundColor = '#660000';
+                    gameLog.style.transition = 'background-color 2s';
+                    document.querySelector('.game-container').style.boxShadow = 
+                        '0 0 30px rgba(255,0,0,0.5)';
+                } else {
+                    document.body.style.backgroundColor = '#330000';
+                    document.body.style.transition = 'background-color 1s';
+                    gameLog.style.backgroundColor = '#660000';
                 }
 
-                // Abomination's turn
-                const abominationDamage = Math.floor(Math.random() * abomination.strength) + 1;
-                unicorn.vitality -= abominationDamage;
-                appendToLog(`The ${abomination.name} lashes out, dealing ${abominationDamage} damage`);
+                appendToLog(`\n==========================================`);
+                appendToLog(`🔥 BOSS ENCOUNTER - ASCENSION LEVEL ${ascensions} 🔥`);
+                appendToLog(`The air grows thick with malevolent energy...`);
+                appendToLog(`${currentAvatar} encounters ${boss.name}!`);
+                appendToLog(`Power Level: ${(difficultyMultiplier * (1 + boss.ascensionLevel * 0.5) * 100).toFixed(0)}%`);
+                appendToLog(`==========================================\n`);
 
-                if (unicorn.vitality <= 0) {
-                    appendToLog(`${currentAvatar} has fallen to the ${abomination.name}. The nightmare consumes you.`);
-                    showDeathScreen();
-                    return false;
+                while (unicorn.vitality > 0 && boss.vitality > 0) {
+                    boss.turnCount++;
+                    
+                    // Increase boss rage every 3 turns
+                    if (boss.turnCount % 3 === 0) {
+                        boss.rage += 0.15 * (1 + ascensions * 0.1); // Rage increases faster with ascensions
+                        appendToLog(`💢 ${boss.name}'s fury intensifies! (${(boss.rage * 100 - 100).toFixed(0)}% rage bonus)`);
+                        
+                        // Visual feedback
+                        document.body.style.backgroundColor = `rgb(${51 + boss.turnCount * 2}, 0, 0)`;
+                    }
+
+                    // Unicorn's turn
+                    const unicornDamage = Math.floor(Math.random() * unicorn.strength) + Math.floor(unicorn.strength * 0.5);
+                    boss.vitality -= unicornDamage;
+                    appendToLog(`${currentAvatar} strikes ${boss.name} for ${unicornDamage} damage!`);
+
+                    if (boss.vitality <= 0) {
+                        const baseEchoes = 2500;
+                        const ascensionBonus = Math.floor(baseEchoes * (ascensions * 0.5));
+                        const totalEchoes = baseEchoes + ascensionBonus;
+                        
+                        unicorn.bloodEchoes += totalEchoes;
+                        
+                        appendToLog(`\n💥 ${boss.name} has been vanquished!`);
+                        appendToLog(`You gain ${totalEchoes} Blood Echoes! (${baseEchoes} + ${ascensionBonus} ascension bonus)`);
+                        appendToLog(`The cosmic horror dissipates, leaving behind only echoes of its presence...`);
+                        lastBossEncounter = insight;
+                        bossDefeated = true;
+                        
+                        // Victory visual effects
+                        document.body.style.backgroundColor = '#4a0066';
+                        setTimeout(() => {
+                            document.body.style.backgroundColor = originalBackground;
+                            gameLog.style.backgroundColor = originalGameLogColor;
+                        }, 1000);
+                        
+                        updateStats();
+                        return true;
+                    }
+
+                    // Boss's turn with enhanced rage multiplier
+                    const baseDamage = Math.floor(Math.random() * boss.strength) + Math.floor(boss.strength * 0.3);
+                    const rageDamage = Math.floor(baseDamage * boss.rage);
+                    unicorn.vitality -= rageDamage;
+
+                    // Enhanced attack messages based on rage level
+                    if (boss.rage >= 2.5) {
+                        appendToLog(`💥💥💥 ${boss.name} unleashes an APOCALYPTIC blast for ${rageDamage} damage!`);
+                    } else if (boss.rage >= 2.0) {
+                        appendToLog(`💥💥 ${boss.name} unleashes a devastating cosmic blast for ${rageDamage} damage!`);
+                    } else if (boss.rage >= 1.5) {
+                        appendToLog(`💥 ${boss.name} strikes with increased fury for ${rageDamage} damage!`);
+                    } else {
+                        appendToLog(`${boss.name} attacks for ${rageDamage} damage!`);
+                    }
+
+                    if (unicorn.vitality <= 0) {
+                        appendToLog(`\n☠️ ${currentAvatar} has fallen to ${boss.name}...`);
+                        appendToLog(`The nightmare consumes you completely.`);
+                        showDeathScreen();
+                        
+                        setTimeout(() => {
+                            document.body.style.backgroundColor = originalBackground;
+                            gameLog.style.backgroundColor = originalGameLogColor;
+                        }, 1000);
+                        
+                        return false;
+                    }
+                }
+            } else {
+                const abomination = generateAbomination();
+                appendToLog(`${currentAvatar} encounters a ${abomination.name} in the twisted corridors!`);
+
+                while (unicorn.vitality > 0 && abomination.vitality > 0) {
+                    const unicornDamage = Math.floor(Math.random() * unicorn.strength) + 1;
+                    abomination.vitality -= unicornDamage;
+                    appendToLog(`${currentAvatar} strikes the ${abomination.name} for ${unicornDamage} damage`);
+
+                    if (abomination.vitality <= 0) {
+                        const echoesGained = Math.floor(((insight + 1) * 20) * difficultyMultiplier);
+                        unicorn.bloodEchoes += echoesGained;
+                        appendToLog(`The ${abomination.name} is vanquished! You gain ${echoesGained} Blood Echoes.`);
+                        insight++;
+                        unicorn.strength += 1;
+                        unicorn.maxVitality += 10;
+                        appendToLog(`Your mystical knowledge grows... Insight: ${insight}, Strength +1, Max Vitality +10`);
+                        updateStats();
+                        return true;
+                    }
+
+                    const abominationDamage = Math.floor(Math.random() * abomination.strength) + 1;
+                    unicorn.vitality -= abominationDamage;
+                    appendToLog(`The ${abomination.name} lashes out, dealing ${abominationDamage} damage`);
+
+                    if (unicorn.vitality <= 0) {
+                        appendToLog(`${currentAvatar} has fallen to the ${abomination.name}. The nightmare consumes you.`);
+                        showDeathScreen();
+                        return false;
+                    }
                 }
             }
         }
@@ -284,7 +519,7 @@
         function commune() {
             if (insight >= 1) {
                 insight -= 1;
-                const healAmount = Math.floor(unicorn.maxVitality * 0.4); // Heal 40% of max vitality
+                const healAmount = Math.floor(unicorn.maxVitality * 0.4);
                 unicorn.vitality = Math.min(unicorn.vitality + healAmount, unicorn.maxVitality);
                 appendToLog(`You commune with mystical forces, sacrificing 1 Insight to restore ${healAmount} Vitality.`);
                 updateStats();
@@ -298,6 +533,7 @@
                 unicorn.bloodEchoes -= 10000;
                 ascensions++;
                 difficultyMultiplier += 0.2;
+                bossDefeated = false; // Reset boss defeat status for new ascension
                 appendToLog(`You ascend to a higher level of the Tower. The air grows thicker with cosmic energy.`);
                 appendToLog(`Difficulty increased. Monsters are now ${(difficultyMultiplier * 100).toFixed(0)}% stronger.`);
                 updateStats();
@@ -314,20 +550,109 @@
             bootScreen.style.display = 'flex';
             document.getElementById('madeBy').style.display = 'none';
             document.getElementById('loadingBar').style.display = 'none';
+            
+            // Update ASCII art to show the one-eyed terror
             document.getElementById('asciiArt').innerHTML = `
- _______\)%%%%%%%%._              
-\`''''-'-;   % % % % %'-._         
-        :U) \\            '-.      
-        : W__)'    .'    .'       
-        :.::/  '.'   .'           
-        o_U/   :    ;             
-               :   .'             
-                ''
+                  _______________
+             ,===:'.,            \`-.
+                  \`:.  ,__  _  \\  |  )
+                   \`:.(  O  )   \` |,'
+                   ,='| \`-'      /'
+                  /  ,'         /
+                 |  /       , ,'
+                 |,'      ,' /
+            ⠀    '------'  /
+                 |##___,.,'
             `;
-            appendToLog("After your 10th ascension something strange happens to you.. you morph into one of the same monsters you have been fighting brandishing one eye and foaming at the mouth hoping the next dungeon crawler runs across you..YOU WERE CONSUMED BY ASCENSION");
+
+            // Dramatic transformation sequence
+            let transformationMessages = [
+                "As you complete your 10th ascension, something strange begins to happen...",
+                "Your body contorts and twists as cosmic energy surges through you...",
+                "Your many eyes merge into a single, terrifying orb...",
+                "The very power you sought to defeat has claimed you...",
+                "You have become that which you fought against...",
+                "YOU ARE NOW THE ONE EYED TERROR",
+                "The cycle continues, as you await the next challenger..."
+            ];
+
+            let delay = 0;
+            transformationMessages.forEach((message, index) => {
+                setTimeout(() => {
+                    appendToLog(`\n${message}`);
+                    
+                    // Visual effects for transformation
+                    if (index === transformationMessages.length - 1) {
+                        document.body.style.backgroundColor = '#330000';
+                        gameLog.style.backgroundColor = '#660000';
+                        document.querySelector('.game-container').style.borderColor = '#ff0000';
+                    }
+                }, delay);
+                delay += 2000; // 2 seconds between each message
+            });
+
+            // Update stats to show transformation
+            setTimeout(() => {
+                unicorn = {
+                    name: "The One Eyed Terror",
+                    maxVitality: 1000,
+                    vitality: 1000,
+                    strength: 100,
+                    bloodEchoes: 0
+                };
+                updateStats();
+            }, delay);
+
+            // Disable buttons with custom messages
             huntButton.disabled = true;
+            huntButton.title = "You are now the hunted...";
             communeButton.disabled = true;
+            communeButton.title = "The darkness is now your only companion...";
             ascendButton.disabled = true;
+            ascendButton.title = "You have reached your final form...";
+
+            // Add final stats to game log
+            setTimeout(() => {
+                appendToLog("\n=== Final Statistics ===");
+                appendToLog(`Total Ascensions: ${ascensions}`);
+                appendToLog(`Maximum Insight Reached: ${insight}`);
+                appendToLog(`Monsters Vanquished: Many`);
+                appendToLog(`Final Form: The One Eyed Terror`);
+                appendToLog("======================");
+                appendToLog("\nYou will remain here, waiting for the next unicorn brave enough to climb the tower...");
+            }, delay + 2000);
+
+            // Add visual pulsing effect to show your new power
+            let pulseIntensity = 0;
+            let increasing = true;
+            const pulseEffect = setInterval(() => {
+                if (increasing) {
+                    pulseIntensity += 0.05;
+                    if (pulseIntensity >= 1) increasing = false;
+                } else {
+                    pulseIntensity -= 0.05;
+                    if (pulseIntensity <= 0) increasing = true;
+                }
+                
+                document.body.style.backgroundColor = `rgb(${51 + pulseIntensity * 20}, 0, 0)`;
+                document.querySelector('.game-container').style.boxShadow = 
+                    `0 0 ${20 + pulseIntensity * 30}px rgba(255,0,0,${0.3 + pulseIntensity * 0.2})`;
+            }, 50);
+
+            // Add this to your CSS
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes terrorPulse {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.05); }
+                    100% { transform: scale(1); }
+                }
+                .terror-mode {
+                    animation: terrorPulse 2s infinite;
+                }
+            `;
+            document.head.appendChild(style);
+            document.querySelector('.unicorn-avatar').classList.add('terror-mode');
         }
 
         function showDeathScreen() {
@@ -349,6 +674,8 @@
             insight = 0;
             ascensions = 0;
             difficultyMultiplier = 1;
+            lastBossEncounter = 0;
+            bossDefeated = false;
             updateStats();
             selectRandomAvatar();
             appendToLog("A new unicorn emerges from the cosmic mists, ready to challenge the Tower of Nightmares...");
@@ -385,6 +712,105 @@
             selectRandomAvatar();
             updateStats();
         };
+
+        function updateTowerVisualization() {
+            const currentHeight = Math.max(insight, towerHeight);
+            
+            // Add new segments if needed
+            while (towerHeight < currentHeight) {
+                towerHeight++;
+                addTowerSegment(towerHeight);
+            }
+
+            // Update current segment highlight
+            document.querySelectorAll('.tower-segment').forEach(segment => {
+                segment.classList.remove('current');
+            });
+            
+            const currentSegment = document.querySelector(`[data-level="${insight}"]`);
+            if (currentSegment) {
+                currentSegment.classList.add('current');
+            }
+
+            // Ensure the current segment is visible
+            if (currentSegment) {
+                currentSegment.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function addTowerSegment(level) {
+            const segment = document.createElement('div');
+            segment.className = 'tower-segment';
+            segment.setAttribute('data-level', level);
+            
+            // Add markers every 10 levels
+            if (level % 10 === 0) {
+                const marker = document.createElement('div');
+                marker.className = 'tower-marker';
+                marker.textContent = level;
+                segment.appendChild(marker);
+            }
+
+            // Update segment info
+            updateSegmentInfo(segment, level);
+
+            // Add to tower
+            towerContainer.insertBefore(segment, towerContainer.firstChild);
+            towerSegments.push(segment);
+
+            // Limit visible segments for performance
+            if (towerSegments.length > 100) {
+                const oldSegment = towerSegments.shift();
+                oldSegment.remove();
+            }
+        }
+
+        function updateSegmentInfo(segment, level) {
+            let info = `Level ${level}`;
+            
+            // Add boss encounter info
+            if (level === lastBossEncounter) {
+                segment.classList.add('boss');
+                info += ' - Boss Defeated!';
+            }
+            
+            // Add ascension info
+            if (level % 20 === 0) {
+                info += ' - Ascension Point';
+            }
+
+            segment.setAttribute('data-info', info);
+        }
+
+        // Modify your existing functions to update the tower
+
+        // Update the hunt function
+        const originalHunt = hunt;
+        hunt = function() {
+            const result = originalHunt.apply(this, arguments);
+            updateTowerVisualization();
+            return result;
+        };
+
+        // Update the resetGame function
+        const originalResetGame = resetGame;
+        resetGame = function() {
+            originalResetGame.apply(this, arguments);
+            towerHeight = 0;
+            towerSegments = [];
+            towerContainer.innerHTML = '';
+            updateTowerVisualization();
+        };
+
+        // Initialize tower on load
+        window.addEventListener('load', () => {
+            updateTowerVisualization();
+        });
+
+        // Add tower scaling with window size
+        window.addEventListener('resize', () => {
+            updateTowerVisualization();
+        });
     </script>
 </body>
 </html>
